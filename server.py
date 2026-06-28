@@ -9,7 +9,7 @@ import json
 import uuid
 import asyncio
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -174,19 +174,19 @@ TOOL_DEFINITIONS = [
 
 class ChatMessage(BaseModel):
     role: str
-    content: str | None = None
-    tool_calls: list | None = None
-    tool_call_id: str | None = None
-    name: str | None = None
+    content: Optional[str] = None
+    tool_calls: Optional[list] = None
+    tool_call_id: Optional[str] = None
+    name: Optional[str] = None
 
 class ChatCompletionRequest(BaseModel):
     model: str = "cubiczan-agent"
     messages: list[ChatMessage]
     temperature: float | None = 0.7
-    max_tokens: int | None = 2048
-    stream: bool | None = False
-    tools: list | None = None
-    tool_choice: str | None = None
+    max_tokens: Optional[int] = 2048
+    stream: Optional[bool] = False
+    tools: Optional[list] = None
+    tool_choice: Optional[str] = None
 
 def make_id(prefix: str = "chatcmpl") -> str:
     return f"{prefix}-{uuid.uuid4().hex[:12]}"
@@ -198,101 +198,99 @@ def make_tool_call_id() -> str:
 
 async def execute_tool(name: str, args: dict) -> str:
     """Execute a Cubiczan tool and return the result as a string."""
-    match name:
-        case "cubiczan_analyze":
-            problem = args.get("problem", "")
-            perspectives = args.get("perspectives", ["finance", "supply_chain", "compliance", "engineering", "strategy"])
-            # Stub: in production, dispatch to real Cubiczan agent subprocesses
-            return json.dumps({
-                "status": "analysis_complete",
-                "problem": problem,
-                "perspectives_engaged": perspectives,
-                "summary": f"Multi-agent analysis of '{problem[:80]}...' complete.",
-                "key_findings": [
-                    f"Finance perspective: assessed revenue impact and capital requirements",
-                    f"Supply chain perspective: identified upstream dependencies and bottlenecks",
-                    f"Compliance perspective: flagged regulatory considerations",
-                    f"Engineering perspective: evaluated technical feasibility",
+    if name == "cubiczan_analyze":
+        problem = args.get("problem", "")
+        perspectives = args.get("perspectives", ["finance", "supply_chain", "compliance", "engineering", "strategy"])
+        # Stub: in production, dispatch to real Cubiczan agent subprocesses
+        return json.dumps({
+            "status": "analysis_complete",
+            "problem": problem,
+            "perspectives_engaged": perspectives,
+            "summary": f"Multi-agent analysis of '{problem[:80]}...' complete.",
+            "key_findings": [
+                "Finance perspective: assessed revenue impact and capital requirements",
+                "Supply chain perspective: identified upstream dependencies and bottlenecks",
+                "Compliance perspective: flagged regulatory considerations",
+                "Engineering perspective: evaluated technical feasibility",
+            ],
+            "confidence_score": 0.87,
+            "recommendation": "Proceed with implementation — low risk, high strategic alignment.",
+        }, indent=2)
+
+    if name == "cubiczan_consensus":
+        proposal = args.get("proposal", "")
+        domain = args.get("domain", "strategy")
+        # Stub: simulate CHP workflow
+        return json.dumps({
+            "status": "PROVISIONAL_LOCK",
+            "proposal": proposal[:100],
+            "domain": domain,
+            "r0_gate": {
+                "passed": True,
+                "foundation_disclosure": "Complete",
+                "adversarial_attacks": [
+                    {"attack": "straw_man", "defense": "passed"},
+                    {"attack": "false_dilemma", "defense": "passed"},
+                    {"attack": "slippery_slope", "defense": "requires_further_evidence"},
                 ],
-                "confidence_score": 0.87,
-                "recommendation": "Proceed with implementation — low risk, high strategic alignment.",
-            }, indent=2)
+            },
+            "verdict": "PROVISIONAL_LOCK — proposal is sound pending further evidence on long-term edge cases.",
+            "next_step": "Submit additional counter-arguments or proceed to full LOCKED status.",
+        }, indent=2)
 
-        case "cubiczan_consensus":
-            proposal = args.get("proposal", "")
-            domain = args.get("domain", "strategy")
-            # Stub: simulate CHP workflow
-            return json.dumps({
-                "status": "PROVISIONAL_LOCK",
-                "proposal": proposal[:100],
-                "domain": domain,
-                "r0_gate": {
-                    "passed": True,
-                    "foundation_disclosure": "Complete",
-                    "adversarial_attacks": [
-                        {"attack": "straw_man", "defense": "passed"},
-                        {"attack": "false_dilemma", "defense": "passed"},
-                        {"attack": "slippery_slope", "defense": "requires_further_evidence"},
-                    ],
-                },
-                "verdict": "PROVISIONAL_LOCK — proposal is sound pending further evidence on long-term edge cases.",
-                "next_step": "Submit additional counter-arguments or proceed to full LOCKED status.",
-            }, indent=2)
+    if name == "cubiczan_swarm":
+        topic = args.get("topic", "")
+        sources = args.get("data_sources", ["news", "social"])
+        interval = args.get("interval", "daily")
+        swarm_id = uuid.uuid4().hex[:8]
+        return json.dumps({
+            "status": "swarm_deployed",
+            "swarm_id": f"swarm_{swarm_id}",
+            "topic": topic,
+            "data_sources": sources,
+            "interval": interval,
+            "observation_count": 0,
+            "message": f"Swarm '{swarm_id}' deployed. Monitoring '{topic[:60]}' from {len(sources)} sources on a {interval} cadence.",
+        }, indent=2)
 
-        case "cubiczan_swarm":
-            topic = args.get("topic", "")
-            sources = args.get("data_sources", ["news", "social"])
-            interval = args.get("interval", "daily")
-            swarm_id = uuid.uuid4().hex[:8]
-            return json.dumps({
-                "status": "swarm_deployed",
-                "swarm_id": f"swarm_{swarm_id}",
-                "topic": topic,
-                "data_sources": sources,
-                "interval": interval,
-                "observation_count": 0,
-                "message": f"Swarm '{swarm_id}' deployed. Monitoring '{topic[:60]}' from {len(sources)} sources on a {interval} cadence.",
-            }, indent=2)
+    if name == "cubiczan_search":
+        query = args.get("query", "")
+        category = args.get("category", "all")
+        return json.dumps({
+            "status": "search_complete",
+            "query": query,
+            "results": [
+                {"title": "CHP Protocol Specification", "url": "https://cubiczan.com/docs/chp", "snippet": "Consensus Hardening Protocol with R0 gate and adversarial attack defense."},
+                {"title": "Multi-Agent CFO OS", "url": "https://cubiczan.com/docs/cfo-os", "snippet": "Autonomous CFO operating system with SEC compliance and earnings analysis."},
+                {"title": "Swarm Intelligence Platform", "url": "https://cubiczan.com/docs/swarm", "snippet": "Stigmergic coordination for continuous monitoring and prediction markets."},
+            ],
+        }, indent=2)
 
-        case "cubiczan_search":
-            query = args.get("query", "")
-            category = args.get("category", "all")
-            return json.dumps({
-                "status": "search_complete",
-                "query": query,
-                "results": [
-                    {"title": "CHP Protocol Specification", "url": "https://cubiczan.com/docs/chp", "snippet": "Consensus Hardening Protocol with R0 gate and adversarial attack defense."},
-                    {"title": "Multi-Agent CFO OS", "url": "https://cubiczan.com/docs/cfo-os", "snippet": "Autonomous CFO operating system with SEC compliance and earnings analysis."},
-                    {"title": "Swarm Intelligence Platform", "url": "https://cubiczan.com/docs/swarm", "snippet": "Stigmergic coordination for continuous monitoring and prediction markets."},
-                ],
-            }, indent=2)
+    if name == "web_search":
+        query = args.get("query", "")
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"https://search.brave.com/search?q={query}&source=web",
+                    headers={"User-Agent": "CubiczanMCP/0.1"},
+                )
+                return json.dumps({"status": "ok", "query": query, "raw_html_len": len(resp.text), "note": "Full parsing requires HTML extraction"})
+        except Exception as e:
+            return json.dumps({"status": "error", "query": query, "error": str(e)})
 
-        case "web_search":
-            query = args.get("query", "")
-            try:
-                import httpx
-                async with httpx.AsyncClient(timeout=10) as client:
-                    resp = await client.get(
-                        f"https://search.brave.com/search?q={query}&source=web",
-                        headers={"User-Agent": "CubiczanMCP/0.1"},
-                    )
-                    return json.dumps({"status": "ok", "query": query, "raw_html_len": len(resp.text), "note": "Full parsing requires HTML extraction"})
-            except Exception as e:
-                return json.dumps({"status": "error", "query": query, "error": str(e)})
+    if name == "read_url":
+        url = args.get("url", "")
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(url, headers={"User-Agent": "CubiczanMCP/0.1"})
+                text = resp.text[:5000]
+                return json.dumps({"status": "ok", "url": url, "content_length": len(resp.text), "preview": text[:2000]})
+        except Exception as e:
+            return json.dumps({"status": "error", "url": url, "error": str(e)})
 
-        case "read_url":
-            url = args.get("url", "")
-            try:
-                import httpx
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.get(url, headers={"User-Agent": "CubiczanMCP/0.1"})
-                    text = resp.text[:5000]
-                    return json.dumps({"status": "ok", "url": url, "content_length": len(resp.text), "preview": text[:2000]})
-            except Exception as e:
-                return json.dumps({"status": "error", "url": url, "error": str(e)})
-
-        case _:
-            return json.dumps({"error": f"Unknown tool: {name}"})
+    return json.dumps({"error": f"Unknown tool: {name}"})
 
 # ─── Routes ──────────────────────────────────────────────────────────────
 
