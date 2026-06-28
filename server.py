@@ -9,7 +9,7 @@ import json
 import uuid
 import asyncio
 import logging
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, List, Dict, Union
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -181,8 +181,8 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     model: str = "cubiczan-agent"
-    messages: list[ChatMessage]
-    temperature: float | None = 0.7
+    messages: List[ChatMessage]
+    temperature: Optional[float] = 0.7
     max_tokens: Optional[int] = 2048
     stream: Optional[bool] = False
     tools: Optional[list] = None
@@ -366,7 +366,7 @@ async def stream_response(body: ChatCompletionRequest) -> AsyncGenerator[str, No
     yield f"data: {json.dumps({'id': chat_id, 'object': 'chat.completion.chunk', 'created': int(time.time()), 'model': body.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
     yield "data: [DONE]\n\n"
 
-def suggest_tool(user_text: str, available_tools: list[dict]) -> dict | None:
+def suggest_tool(user_text: str, available_tools: List[dict]) -> Optional[dict]:
     """Simple keyword-based tool suggestion matching Off Grid's schema."""
     text_lower = user_text.lower()
 
